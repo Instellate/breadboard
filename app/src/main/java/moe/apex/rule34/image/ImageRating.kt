@@ -10,7 +10,7 @@ private val FILTER_EXPLICIT     = listOf("-rating:explicit", "-rating:e")
 
 
 enum class ImageRating(override val label: String) : PrefEnum<ImageRating> {
-    SAFE("Safe"),
+    SAFE("General"),
     SENSITIVE("Sensitive"),
     QUESTIONABLE("Questionable"),
     EXPLICIT("Explicit"),
