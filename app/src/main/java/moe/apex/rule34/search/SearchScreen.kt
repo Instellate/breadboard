@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardReturn
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -269,13 +270,32 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
     fun TagListEntry(
         modifier: Modifier = Modifier,
         tag: TagSuggestion,
-        position: ListItemPosition
+        index: Int
     ) {
         ExpressiveTagEntryContainer(
             modifier = modifier,
             label = tag.label,
             supportingLabel = tag.category,
-            position = position
+            trailingContent = {
+                // Show hint that the user can press enter to add the first tag in the list
+                AnimatedVisibility(
+                    visible = index == 0,
+                    enter = fadeIn(),
+                    exit = fadeOut(tween(durationMillis = 150)) // Long enough to feel smooth, short enough to not linger if it goes from first to non-first when the list updates
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardReturn,
+                        contentDescription = "Press enter to add",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = SMALL_SPACER.dp)
+                    )
+                }
+            },
+            position = when (index) {
+                0 -> if (mostRecentSuggestions.size == 1) ListItemPosition.SINGLE_ELEMENT else ListItemPosition.TOP
+                mostRecentSuggestions.lastIndex -> ListItemPosition.BOTTOM
+                else -> ListItemPosition.MIDDLE
+            }
         ) {
             searchString = ""
             cleanedSearchString = ""
@@ -327,13 +347,9 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
                         mostRecentSuggestions.forEachIndexed { index, t ->
                             item(key = t.label) {
                                 TagListEntry(
-                                    tag = t,
                                     modifier = Modifier.animateItem(),
-                                    position = when (index) {
-                                        0 -> if (mostRecentSuggestions.size == 1) ListItemPosition.SINGLE_ELEMENT else ListItemPosition.TOP
-                                        mostRecentSuggestions.lastIndex -> ListItemPosition.BOTTOM
-                                        else -> ListItemPosition.MIDDLE
-                                    }
+                                    tag = t,
+                                    index = index
                                 )
                             }
                         }
