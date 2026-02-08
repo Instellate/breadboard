@@ -38,9 +38,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.apex.rule34.prefs
 import moe.apex.rule34.tag.IgnoredTagsHelper
 import moe.apex.rule34.util.DISABLED_OPACITY
@@ -64,7 +62,7 @@ fun IgnoredTagsScreen(navController: NavHostController, viewModel: BreadboardVie
     val topAppBarState = rememberTopAppBarState()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(topAppBarState)
     val context = LocalContext.current
-    val scope = rememberCoroutineScope { Dispatchers.IO }
+    val scope = rememberCoroutineScope()
     val userPreferencesRepository = LocalContext.current.prefs
     val prefs = LocalPreferences.current
     val ignoredTags = prefs.unfollowedTags.reversed()
@@ -110,14 +108,10 @@ fun IgnoredTagsScreen(navController: NavHostController, viewModel: BreadboardVie
                                                 onSuccess = {
                                                     saveIgnoreListWithTimestamp(context, it)
                                                     viewModel.setRecommendationsProvider(null)
-                                                    withContext(Dispatchers.Main) {
-                                                        showToast(context, "Refreshed ${it.size} tags")
-                                                    }
+                                                    showToast(context, "Refreshed ${it.size} tags")
                                                 },
                                                 onFailure = {
-                                                    withContext(Dispatchers.Main) {
-                                                        showToast(context, "Failed to refresh tags")
-                                                    }
+                                                    showToast(context, "Failed to refresh tags")
                                                 }
                                             )
                                         }.invokeOnCompletion {

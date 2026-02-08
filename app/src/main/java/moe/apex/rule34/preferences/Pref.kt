@@ -49,6 +49,7 @@ import moe.apex.rule34.util.MigrationOnlyField
 import moe.apex.rule34.util.SecretsManager
 import moe.apex.rule34.util.availableRatingsForSource
 import moe.apex.rule34.util.extractPixivId
+import moe.apex.rule34.util.decodeHtml
 import java.io.IOException
 
 
@@ -518,6 +519,29 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
             }
         }
 
+        /* Version 3.1.4 (3.2.0) fixes HTML-encoded tags in favourites. */
+        if (lastUsedVersionCode < 314) { // TODO: Change to 320 because 3.1.4 won't officially exist
+            val data = dataStore.data.first()
+            val favImagesByteArray = data[PreferenceKeys.FAVOURITE_IMAGES]
+            if (favImagesByteArray != null) {
+                val favImages: List<Image> = Cbor.decodeFromByteArray(favImagesByteArray)
+                val migrated = favImages.map { image ->
+                    val meta = image.metadata
+                    if (meta != null) {
+                        image.copy(
+                            metadata = meta.copy(
+                                groupedTags = meta.groupedTags.map { group ->
+                                    group.copy(tags = group.tags.map { it.decodeHtml() })
+                                },
+                                artists = meta.artists.map { it.decodeHtml() }
+                            )
+                        )
+                    } else image
+                }
+                updateFavouriteImages(migrated)
+            }
+        }
+
         /* Always clear the internal ignored list on updates. */
         if (BuildConfig.VERSION_CODE != lastUsedVersionCode) {
             dataStore.edit { prefs ->
@@ -569,7 +593,9 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
     }
 
 
-    private suspend fun updateSet(key: Preferences.Key<Set<String>>, to: Collection<String>) {
+    /** You should probably use [addToSet] or [removeFromSet] instead.
+     *  Only use this if using the alternatives would complicate things. */
+    suspend fun updateSet(key: Preferences.Key<Set<String>>, to: Collection<String>) {
         updatePrefMain(key, to.toSet())
     }
 

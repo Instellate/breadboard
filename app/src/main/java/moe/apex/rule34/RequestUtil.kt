@@ -1,29 +1,46 @@
 package moe.apex.rule34
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import moe.apex.rule34.util.UserAgentInterceptor
 import okhttp3.*
 import java.io.IOException
-import java.util.concurrent.CompletableFuture
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 object RequestUtil {
     private val client = OkHttpClient.Builder()
         .addInterceptor(UserAgentInterceptor())
         .build()
 
-    fun get(url: String, apply: Request.Builder.() -> Unit = {}): CompletableFuture<String> {
-        val future = CompletableFuture<String>()
+
+    suspend fun get(url: String, apply: Request.Builder.() -> Unit = {}): String = withContext(Dispatchers.IO) {
         val req = Request.Builder().url(url).apply(apply).get().build()
+        
+        suspendCancellableCoroutine { continuation ->
+            val call = client.newCall(req)
 
-        client.newCall(req).enqueue(object : Callback {
-            override fun onFailure(call: Call, e: IOException) {
-                future.completeExceptionally(e)
+            continuation.invokeOnCancellation {
+                call.cancel()
             }
 
-            override fun onResponse(call: Call, response: Response) {
-                future.complete(response.body!!.string())
-            }
-        })
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isActive) {
+                        continuation.resumeWithException(e)
+                    }
+                }
 
-        return future
+                override fun onResponse(call: Call, response: Response) {
+                    if (continuation.isActive) {
+                        response.use {
+                            val body = it.body.string()
+                            continuation.resume(body)
+                        }
+                    }
+                }
+            })
+        }
     }
 }

@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardReturn
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
@@ -69,13 +70,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -97,11 +96,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.times
 import androidx.navigation.NavController
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import moe.apex.rule34.R
 import moe.apex.rule34.history.SearchHistoryEntry
 import moe.apex.rule34.image.ImageBoardRequirement
@@ -161,7 +159,7 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
     var shouldShowSuggestions by remember { mutableStateOf(false) }
     var searchString by rememberSaveable { mutableStateOf("") }
     var cleanedSearchString by rememberSaveable { mutableStateOf("") }
-    val mostRecentSuggestions = remember { mutableStateListOf<TagSuggestion>() }
+    var mostRecentSuggestions by remember { mutableStateOf(listOf<TagSuggestion>()) }
 
     var showAgeVerificationDialog by remember { mutableStateOf(false) }
     var showSourceChangeDialog by remember { mutableStateOf(false) }
@@ -237,25 +235,21 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
 
     fun getSuggestions(bypassDelay: Boolean = false, source: ImageSource = currentSource) {
         searchJob?.cancel()
-        searchJob = scope.launch(Dispatchers.IO) {
-            if (cleanedSearchString.isNotEmpty()) delay(if (bypassDelay) 0 else 200)
+        searchJob = scope.launch {
+            if (cleanedSearchString.isNotEmpty() && !bypassDelay) delay(200)
             if (cleanedSearchString !in listOf("", "-")) {
                 try {
-                    val suggestions = source.imageBoard.loadAutoComplete(cleanedSearchString)
+                    mostRecentSuggestions = source.imageBoard.loadAutoComplete(cleanedSearchString)
                     /* This check shouldn't be needed but avoids a race condition whereby clearing
                        the query in the time between getting suggestions and displaying them will cause
                        the old suggestions to be displayed. */
                     if (cleanedSearchString.isEmpty()) return@launch
-                    Snapshot.withMutableSnapshot {
-                        mostRecentSuggestions.clear()
-                        mostRecentSuggestions.addAll(suggestions)
-                    }
                     shouldShowSuggestions = true
+                } catch (_: CancellationException) {
+                    // Do nothing
                 } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        showToast(context, "Error fetching results")
-                    }
-                    Log.e("App", "Error fetching autocomplete results", e)
+                    showToast(context, "Error fetching results")
+                    Log.e("Autocomplete", "Error fetching autocomplete results", e)
                 }
             } else {
                 shouldShowSuggestions = false
@@ -276,13 +270,32 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
     fun TagListEntry(
         modifier: Modifier = Modifier,
         tag: TagSuggestion,
-        position: ListItemPosition
+        index: Int
     ) {
         ExpressiveTagEntryContainer(
             modifier = modifier,
             label = tag.label,
             supportingLabel = tag.category,
-            position = position
+            trailingContent = {
+                // Show hint that the user can press enter to add the first tag in the list
+                AnimatedVisibility(
+                    visible = index == 0,
+                    enter = fadeIn(),
+                    exit = fadeOut(tween(durationMillis = 150)) // Long enough to feel smooth, short enough to not linger if it goes from first to non-first when the list updates
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardReturn,
+                        contentDescription = "Press enter to add",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(end = SMALL_SPACER.dp)
+                    )
+                }
+            },
+            position = when (index) {
+                0 -> if (mostRecentSuggestions.size == 1) ListItemPosition.SINGLE_ELEMENT else ListItemPosition.TOP
+                mostRecentSuggestions.lastIndex -> ListItemPosition.BOTTOM
+                else -> ListItemPosition.MIDDLE
+            }
         ) {
             searchString = ""
             cleanedSearchString = ""
@@ -309,7 +322,7 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
                     .clip(largerShape)
             ) {
                 val resultsState = rememberLazyListState()
-                LaunchedEffect(mostRecentSuggestions.toList()) {
+                LaunchedEffect(mostRecentSuggestions) {
                     scope.launch {
                         resultsState.animateScrollToItem(0)
                     }
@@ -334,13 +347,9 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
                         mostRecentSuggestions.forEachIndexed { index, t ->
                             item(key = t.label) {
                                 TagListEntry(
-                                    tag = t,
                                     modifier = Modifier.animateItem(),
-                                    position = when (index) {
-                                        0 -> if (mostRecentSuggestions.size == 1) ListItemPosition.SINGLE_ELEMENT else ListItemPosition.TOP
-                                        mostRecentSuggestions.lastIndex -> ListItemPosition.BOTTOM
-                                        else -> ListItemPosition.MIDDLE
-                                    }
+                                    tag = t,
+                                    index = index
                                 )
                             }
                         }
@@ -407,7 +416,7 @@ fun SearchScreen(navController: NavController, focusRequester: FocusRequester, v
 
     fun beginSearch() {
         if (searchString.isEmpty()) return performSearch()
-        if (mostRecentSuggestions.isEmpty()) return showToast(context, "No matching tags")
+        if (mostRecentSuggestions.isEmpty() || !shouldShowSuggestions) return showToast(context, "No matching tags")
 
         addToFilter(mostRecentSuggestions[0])
         searchString = ""

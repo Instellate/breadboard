@@ -2,8 +2,6 @@ package moe.apex.rule34.tag
 
 import android.content.Context
 import android.util.Log
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import moe.apex.rule34.R
 import moe.apex.rule34.RequestUtil
@@ -27,16 +25,14 @@ object IgnoredTagsHelper {
         onSuccess: (suspend (Set<String>) -> Unit)? = null,
         onFailure: (suspend (Set<String>) -> Unit)? = null,
     ) {
-        val tags = withContext(Dispatchers.IO) {
-            try {
-                withTimeout(1000L) {
-                    val data = RequestUtil.get(URL).get()
-                    JSONArray(data)
-                }
-            } catch (e: Exception) {
-                Log.e("IgnoredTagsHelper", "Failed to fetch ignored tags list. Using built-in list.", e)
-                null
+        val tags = try {
+            withTimeout(1000L) {
+                val data = RequestUtil.get(URL)
+                JSONArray(data)
             }
+        } catch (e: Exception) {
+            Log.e("IgnoredTagsHelper", "Failed to fetch ignored tags list. Using built-in list.", e)
+            null
         }
 
         val ignoredTags = tags?.let {
