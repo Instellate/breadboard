@@ -51,6 +51,7 @@ import moe.apex.rule34.image.ImageBoardAuth
 import moe.apex.rule34.util.AgeVerification
 import moe.apex.rule34.util.MigrationOnlyField
 import moe.apex.rule34.util.SecretsManager
+import moe.apex.rule34.util.decodeHtml
 
 
 val LocalPreferences = compositionLocalOf {
@@ -507,6 +508,29 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
             val showIgnoredKey = booleanPreferencesKey("show_unfollowed_tags_in_frequents_list")
             dataStore.edit { prefs ->
                 prefs.remove(showIgnoredKey)
+            }
+        }
+
+        /* Version 3.1.4 fixes HTML-encoded tags in favourites. */
+        if (lastUsedVersionCode < 314) {
+            val data = dataStore.data.first()
+            val favImagesByteArray = data[PreferenceKeys.FAVOURITE_IMAGES]
+            if (favImagesByteArray != null) {
+                val favImages: List<Image> = Cbor.decodeFromByteArray(favImagesByteArray)
+                val migrated = favImages.map { image ->
+                    val meta = image.metadata
+                    if (meta != null) {
+                        image.copy(
+                            metadata = meta.copy(
+                                groupedTags = meta.groupedTags.map { group ->
+                                    group.copy(tags = group.tags.map { it.decodeHtml() })
+                                },
+                                artists = meta.artists.map { it.decodeHtml() }
+                            )
+                        )
+                    } else image
+                }
+                updateFavouriteImages(migrated)
             }
         }
 

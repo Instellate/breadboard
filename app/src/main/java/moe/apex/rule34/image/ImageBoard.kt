@@ -6,6 +6,7 @@ import moe.apex.rule34.RequestUtil
 import moe.apex.rule34.preferences.ImageSource
 import moe.apex.rule34.tag.TagCategory
 import moe.apex.rule34.tag.TagSuggestion
+import moe.apex.rule34.util.decodeHtml
 import moe.apex.rule34.util.extractPixivId
 import org.json.JSONArray
 import org.json.JSONException
@@ -55,8 +56,8 @@ interface ImageBoard {
 
         for (i in 0 until resultCount) {
             val suggestion = results.getJSONObject(i)
-            val label = suggestion.optString("label", suggestion.optString("name"))
-            val value = suggestion.optString("value", suggestion.optString("name"))
+            val label = suggestion.optString("label", suggestion.optString("name")).decodeHtml()
+            val value = suggestion.optString("value", suggestion.optString("name")).decodeHtml()
             val category = suggestion.optString("category", suggestion.optString("type"))
                 .takeIf { it.isNotEmpty() }
 
@@ -121,7 +122,7 @@ interface GelbooruBasedImageBoard : ImageBoard {
         val metaParentId = e.getString("parent_id").takeIf { it != "0" }
         val metaSource = e.getString("source").takeIf { it.isNotEmpty() }
         val metaGroupedTags = listOf(
-            TagCategory.GENERAL.group(e.getString("tags").split(" ")),
+            TagCategory.GENERAL.group(e.getString("tags").decodeHtml().split(" ")),
         )
         val metaRating = getRatingFromString(e.getString("rating"))
         val metaPixivId = extractPixivId(metaSource)
@@ -283,11 +284,11 @@ object Danbooru : ImageBoard {
 
         if (!ensureSupportedFormat(fileFormat)) return null
 
-        val tagStringArtist = e.getString("tag_string_artist")
-        val tagCharacter = e.getString("tag_string_character").split(" ")
-        val tagCopyright = e.getString("tag_string_copyright").split(" ")
-        val tagGeneral = e.getString("tag_string_general").split(" ")
-        val tagMeta = e.getString("tag_string_meta").split(" ")
+        val tagStringArtist = e.getString("tag_string_artist").decodeHtml()
+        val tagCharacter = e.getString("tag_string_character").decodeHtml().split(" ")
+        val tagCopyright = e.getString("tag_string_copyright").decodeHtml().split(" ")
+        val tagGeneral = e.getString("tag_string_general").decodeHtml().split(" ")
+        val tagMeta = e.getString("tag_string_meta").decodeHtml().split(" ")
 
         val metaParentId = e.getString("parent_id").takeIf { it != "null" }
         val metaHasChildren = e.getBoolean("has_children")
@@ -383,7 +384,7 @@ object Yandere : ImageBoard {
         val metaHasChildren = e.getBoolean("has_children")
         val metaSource = e.optString("source", "").takeIf { it.isNotEmpty() }
         val metaGroupedTags = listOf(
-            TagCategory.GENERAL.group(e.getString("tags").split(" ")),
+            TagCategory.GENERAL.group(e.getString("tags").decodeHtml().split(" ")),
         )
         val metaRating = getRatingFromString(e.getString("rating"))
         val metaPixivId = extractPixivId(metaSource)
