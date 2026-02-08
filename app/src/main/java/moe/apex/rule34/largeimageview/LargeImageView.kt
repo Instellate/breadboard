@@ -80,9 +80,7 @@ import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import coil3.request.ImageRequest
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.ZoomableState
 import me.saket.telephoto.zoomable.rememberZoomableState
@@ -513,17 +511,17 @@ private fun LargeImageToolbar(
 @Composable
 fun LazyLargeImageView(
     navController: NavController,
-    onImageLoadRequest: () -> Image?
+    id: String,
+    imageSource: moe.apex.rule34.preferences.ImageSource,
 ) {
     val context = LocalContext.current
+    val prefs = LocalPreferences.current
     var image by remember { mutableStateOf<Image?>(null) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
         try {
-            withContext(Dispatchers.IO) {
-                image = onImageLoadRequest()
-            }
+            image = imageSource.imageBoard.loadImage(id, prefs.authFor(imageSource, context))
         } catch (e: ExecutionException) {
             if (e.cause is SocketTimeoutException) {
                 showToast(context, "Connection timed out")

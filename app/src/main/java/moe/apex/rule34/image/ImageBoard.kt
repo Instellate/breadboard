@@ -43,13 +43,13 @@ interface ImageBoard {
     val localFilterType: ImageBoardRequirement
         get() = ImageBoardRequirement.NOT_NEEDED
 
-    fun loadAutoComplete(searchString: String): List<TagSuggestion> {
+    suspend fun loadAutoComplete(searchString: String): List<TagSuggestion> {
         val suggestions = mutableListOf<TagSuggestion>()
         val isExcluded = searchString.startsWith("-")
         val tags = searchString.replace("^-".toRegex(), "")
         val body = RequestUtil.get(autoCompleteSearchUrl.format(tags)) {
             addHeader("Referrer", baseUrl)
-        }.get()
+        }
         val results = JSONArray(body)
         val resultCount = results.length()
 
@@ -75,9 +75,9 @@ interface ImageBoard {
 
     fun parseImage(e: JSONObject): Image?
 
-    fun loadImage(id: String, auth: ImageBoardAuth? = null): Image?
+    suspend fun loadImage(id: String, auth: ImageBoardAuth? = null): Image?
 
-    fun loadPage(tags: String, page: Int, auth: ImageBoardAuth? = null): List<Image>
+    suspend fun loadPage(tags: String, page: Int, auth: ImageBoardAuth? = null): List<Image>
 
     fun formatTagString(tags: List<TagSuggestion>): String {
         return tags.joinToString("+") { it.formattedLabel }
@@ -137,14 +137,14 @@ interface GelbooruBasedImageBoard : ImageBoard {
         return Image(id, fileName, fileFormat, previewUrl, fileUrl, sampleUrl, imageSource, aspectRatio, metadata)
     }
 
-    fun loadImage(id: String, postListKey: String?, imageSource: ImageSource, auth: ImageBoardAuth? = null): Image? {
+    suspend fun loadImage(id: String, postListKey: String?, imageSource: ImageSource, auth: ImageBoardAuth? = null): Image? {
         val parsedId = id.toIntOrNull() ?: return null
         return loadPage("id:$parsedId", 0, postListKey, imageSource, auth).getOrNull(0)
     }
 
-    fun loadPage(tags: String, page: Int, postListKey: String?, imageSource: ImageSource, auth: ImageBoardAuth? = null): List<Image> {
+    suspend fun loadPage(tags: String, page: Int, postListKey: String?, imageSource: ImageSource, auth: ImageBoardAuth? = null): List<Image> {
         val url = buildImageSearchUrl(tags, page, auth)
-        val body = RequestUtil.get(url).get()
+        val body = RequestUtil.get(url)
         if (body.isEmpty()) return emptyList()
 
         val posts: JSONArray
@@ -196,11 +196,11 @@ object Rule34 : GelbooruBasedImageBoard {
         return parseImage(e, ImageSource.R34)
     }
 
-    override fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
+    override suspend fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
         return loadImage(id, null, ImageSource.R34, auth)
     }
 
-    override fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
+    override suspend fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
         return loadPage(tags, page, null, ImageSource.R34, auth)
     }
 }
@@ -217,11 +217,11 @@ object Safebooru : GelbooruBasedImageBoard {
         return parseImage(e, ImageSource.SAFEBOORU)
     }
 
-    override fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
+    override suspend fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
         return loadImage(id, null, ImageSource.SAFEBOORU, auth)
     }
 
-    override fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
+    override suspend fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
         return loadPage(tags, page, null, ImageSource.SAFEBOORU, auth)
     }
 }
@@ -240,11 +240,11 @@ object Gelbooru : GelbooruBasedImageBoard {
         return parseImage(e, ImageSource.GELBOORU)
     }
 
-    override fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
+    override suspend fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
         return loadImage(id, "post", ImageSource.GELBOORU, auth)
     }
 
-    override fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
+    override suspend fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
         return loadPage(tags, page, "post", ImageSource.GELBOORU, auth)
     }
 }
@@ -315,14 +315,14 @@ object Danbooru : ImageBoard {
         return Image(id, fileName, fileFormat, previewUrl, fileUrl, sampleUrl, ImageSource.DANBOORU, aspectRatio, metadata)
     }
 
-    override fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
+    override suspend fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
         val parsedId = id.toIntOrNull() ?: return null
         return loadPage("id:$parsedId", 0, auth).getOrNull(0)
     }
 
-    override fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
+    override suspend fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
         val url = buildImageSearchUrl(tags, page, auth)
-        val body = RequestUtil.get(url).get()
+        val body = RequestUtil.get(url)
         if (body.isEmpty()) return emptyList()
 
         val json = JSONArray(body)
@@ -399,14 +399,14 @@ object Yandere : ImageBoard {
         return Image(id, fileName, fileFormat, previewUrl, fileUrl, sampleUrl, ImageSource.YANDERE, aspectRatio, metadata)
     }
 
-    override fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
+    override suspend fun loadImage(id: String, auth: ImageBoardAuth?): Image? {
         val parsedId = id.toIntOrNull() ?: return null
         return loadPage("id:$parsedId", 0).getOrNull(0)
     }
 
-    override fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
+    override suspend fun loadPage(tags: String, page: Int, auth: ImageBoardAuth?): List<Image> {
         val url = buildImageSearchUrl(tags, page, auth)
-        val body = RequestUtil.get(url).get()
+        val body = RequestUtil.get(url)
         if (body.isEmpty()) return emptyList()
 
         val json = JSONArray(body)

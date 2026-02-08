@@ -8,8 +8,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import moe.apex.rule34.image.Image
 import moe.apex.rule34.image.ImageBoardAuth
 import moe.apex.rule34.image.ImageBoardRequirement
@@ -151,50 +149,48 @@ class RecommendationsProvider(
             }"
         }
 
-        withContext(Dispatchers.IO) {
-            try {
-                isLoading = true
-                // if recommendedTags is empty, it should just return the most recent uploaded posts
-                val results = imageSource.imageBoard.loadPage(
-                    tags = searchQuery,
-                    page = pageNumber,
-                    auth = auth,
-                )
-                val safeResults = results.filter {
-                    if (filterRatingsLocally) {
-                        showAllRatings || it.metadata!!.rating == ImageRating.SAFE
-                    } else true
-                }
-                val wantedResults = safeResults.filter {
-                    it.metadata!!.tags.none { tag -> blockedTags.contains(tag.lowercase()) }
-                }
-                Log.i("Recommendations", "Found ${results.size} new images for tags: ${recommendedTags.joinToString(", ")}")
-                Log.i("Recommendations", "Found ${safeResults.size} safe images for tags: ${recommendedTags.joinToString(", ")}")
-                Log.i("Recommendations", "Found ${wantedResults.size} wanted images for tags: ${recommendedTags.joinToString(", ")}")
-                if (results.isEmpty() || safeResults.isEmpty()) {
-                    shouldKeepSearching = false
-                } else {
-                    if (pageNumber == imageSource.imageBoard.firstPageIndex) {
-                        Snapshot.withMutableSnapshot {
-                            recommendedImages.clear()
-                            recommendedImages.addAll(wantedResults)
-                        }
-                    } else if (wantedResults.isNotEmpty()) {
-                        recommendedImages.addAll(wantedResults.filter { it !in recommendedImages })
-                    }
-                }
-                pageNumber++
-            } catch (e: Exception) {
-                Log.e(
-                    "Recommendations",
-                    "Error fetching images with recommended tags: ${e.message}"
-                )
+        try {
+            isLoading = true
+            // if recommendedTags is empty, it should just return the most recent uploaded posts
+            val results = imageSource.imageBoard.loadPage(
+                tags = searchQuery,
+                page = pageNumber,
+                auth = auth,
+            )
+            val safeResults = results.filter {
+                if (filterRatingsLocally) {
+                    showAllRatings || it.metadata!!.rating == ImageRating.SAFE
+                } else true
+            }
+            val wantedResults = safeResults.filter {
+                it.metadata!!.tags.none { tag -> blockedTags.contains(tag.lowercase()) }
+            }
+            Log.i("Recommendations", "Found ${results.size} new images for tags: ${recommendedTags.joinToString(", ")}")
+            Log.i("Recommendations", "Found ${safeResults.size} safe images for tags: ${recommendedTags.joinToString(", ")}")
+            Log.i("Recommendations", "Found ${wantedResults.size} wanted images for tags: ${recommendedTags.joinToString(", ")}")
+            if (results.isEmpty() || safeResults.isEmpty()) {
                 shouldKeepSearching = false
+            } else {
+                if (pageNumber == imageSource.imageBoard.firstPageIndex) {
+                    Snapshot.withMutableSnapshot {
+                        recommendedImages.clear()
+                        recommendedImages.addAll(wantedResults)
+                    }
+                } else if (wantedResults.isNotEmpty()) {
+                    recommendedImages.addAll(wantedResults.filter { it !in recommendedImages })
+                }
             }
-            isLoading = false
-            if (!doneInitialLoad) {
-                doneInitialLoad = true
-            }
+            pageNumber++
+        } catch (e: Exception) {
+            Log.e(
+                "Recommendations",
+                "Error fetching images with recommended tags: ${e.message}"
+            )
+            shouldKeepSearching = false
+        }
+        isLoading = false
+        if (!doneInitialLoad) {
+            doneInitialLoad = true
         }
     }
 }
