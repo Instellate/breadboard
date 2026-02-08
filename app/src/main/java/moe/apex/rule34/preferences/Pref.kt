@@ -511,8 +511,8 @@ class UserPreferencesRepository(private val dataStore: DataStore<Preferences>) {
             }
         }
 
-        /* Version 3.1.4 fixes HTML-encoded tags in favourites. */
-        if (lastUsedVersionCode < 314) {
+        /* Version 3.1.4 (3.2.0) fixes HTML-encoded tags in favourites. */
+        if (lastUsedVersionCode < 314) { // TODO: Change to 320 because 3.1.4 won't officially exist
             val data = dataStore.data.first()
             val favImagesByteArray = data[PreferenceKeys.FAVOURITE_IMAGES]
             if (favImagesByteArray != null) {
