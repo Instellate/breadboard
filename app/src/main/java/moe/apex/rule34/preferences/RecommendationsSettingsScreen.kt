@@ -347,7 +347,7 @@ fun RecommendationsSettingsScreen(navController: NavHostController, viewModel: B
                             checked = prefs.recommendAllRatings,
                             title = "Recommend all ratings",
                             summary = "Show images and tags from all ratings. If disabled, only " +
-                                      "show images and tags rated Safe."
+                                      "show images and tags rated General."
                         ) {
                             if (it && !AgeVerification.hasVerifiedAge(prefs)) {
                                 showAgeVerificationDialog = true
