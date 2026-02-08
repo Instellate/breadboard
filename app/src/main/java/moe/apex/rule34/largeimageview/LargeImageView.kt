@@ -42,10 +42,10 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.VolumeOff
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
@@ -785,13 +785,13 @@ fun LargeVideo(image: Image, isCurrentPage: Boolean) {
                     ) {
                         if (player.isPlaying && videoLoaded) {
                             Icon(
-                                Icons.Filled.Pause,
+                                Icons.Rounded.Pause,
                                 contentDescription = "Pause",
                                 Modifier.size(64.dp)
                             )
                         } else {
                             Icon(
-                                Icons.Filled.PlayArrow,
+                                Icons.Rounded.PlayArrow,
                                 contentDescription = "Resume",
                                 Modifier.size(64.dp)
                             )
@@ -839,13 +839,13 @@ fun LargeVideo(image: Image, isCurrentPage: Boolean) {
                         ) {
                             if (muted) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.VolumeOff,
+                                    Icons.AutoMirrored.Rounded.VolumeOff,
                                     contentDescription = "Volume off",
                                     modifier = Modifier.size(28.dp)
                                 )
                             } else {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.VolumeUp,
+                                    Icons.AutoMirrored.Rounded.VolumeUp,
                                     contentDescription = "Volume on",
                                     modifier = Modifier.size(28.dp)
                                 )
